@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kassensturz">
+<meta name="theme-color" content="#1c1917">
+<title>Kassensturz – Dein Finanz-Überblick</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --card: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --text-soft: #57534e;
+    --text-muted: #a8a29e;
+    --accent: #1c1917;
+    --success: #059669;
+    --danger: #dc2626;
+    --warn: #d97706;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+  .display { font-family: 'Fraunces', serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  header {
+    background: var(--text);
+    color: var(--bg);
+    padding: 20px 16px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  header p { font-size: 11px; color: #a8a29e; margin-top: 2px; }
+  .stat-box { text-align: right; }
+  .stat-box .label { font-size: 10px; color: #a8a29e; text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-box .val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; }
+
+  nav.tabs {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 76px;
+    z-index: 9;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs-inner { max-width: 1100px; margin: 0 auto; display: flex; }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    padding: 14px 18px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-soft);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .card h3 { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .card p { font-size: 14px; color: var(--text-soft); line-height: 1.55; margin-bottom: 10px; }
+
+  .dropzone {
+    border: 2px dashed #d6d3d1;
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--text); background: var(--bg); }
+  .dropzone .icon { font-size: 32px; margin-bottom: 8px; }
+  .dropzone .title { font-weight: 500; font-size: 15px; margin-bottom: 4px; }
+  .dropzone .sub { font-size: 12px; color: var(--text-muted); }
+
+  .msg { padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-top: 14px; display: flex; gap: 8px; align-items: flex-start; }
+  .msg.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .msg.warn { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .msg.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+  button {
+    font: inherit;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--text); color: var(--bg); padding: 9px 16px; font-size: 13px; }
+  .btn-primary:hover { background: #292524; }
+  .btn-danger { background: var(--danger); color: white; padding: 9px 16px; font-size: 13px; }
+  .btn-ghost { background: transparent; color: var(--text-soft); padding: 6px; }
+  .btn-ghost:hover { background: var(--border); color: var(--text); }
+  .btn-chip { background: var(--card); border: 1px solid var(--border); padding: 8px 12px; font-size: 12px; color: var(--text); white-space: nowrap; }
+  .btn-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  input[type="text"], input[type="search"], select, input[type="color"] {
+    font: inherit;
+    font-size: 13px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--text);
+  }
+  input[type="color"] { padding: 2px; height: 38px; width: 48px; cursor: pointer; }
+  input:focus, select:focus { outline: none; border-color: var(--text); }
+
+  .tx-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .tx-main { flex: 1; min-width: 220px; }
+  .tx-meta { font-size: 11px; color: var(--text-muted); }
+  .tx-meta .mono { font-size: 11px; }
+  .tx-partner { font-weight: 500; font-size: 14px; margin: 2px 0; }
+  .tx-purpose { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 500px; }
+  .tx-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tx-amount { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px; min-width: 90px; text-align: right; }
+  .tx-amount.neg { color: var(--danger); }
+  .tx-amount.pos { color: var(--success); }
+
+  /* Gelöschte (deaktivierte) Buchungen: durchgestrichen, ausgegraut, aber reaktivierbar */
+  .tx-row.deleted { opacity: 0.55; background: #f5f5f4; }
+  .tx-row.deleted .tx-partner,
+  .tx-row.deleted .tx-purpose,
+  .tx-row.deleted .tx-meta,
+  .tx-row.deleted .tx-amount { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .tx-row.deleted .cat-chip { opacity: 0.6; filter: grayscale(0.4); }
+  .tx-badge-deleted {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+    padding: 3px 7px; border-radius: 4px;
+    background: var(--danger); color: white; text-transform: uppercase;
+  }
+
+  .cat-chip {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .cat-chip.suggested { background: var(--card); border: 1.5px dashed; }
+  .cat-chip.none { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 700px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } .grid-3 .card-mini:last-child { grid-column: span 2; } }
+
+  .card-mini { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .card-mini .lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .card-mini .v { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; }
+
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .filter-bar input[type="search"] { flex: 1; min-width: 180px; }
+
+  .cat-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px; }
+  .cat-color { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+  .cat-name { font-weight: 500; font-size: 14px; }
+  .cat-keywords { font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .top-cats { list-style: none; }
+  .top-cats li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .top-cats li:last-child { border-bottom: none; }
+  .top-cats .dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .top-cats .name { flex: 1; font-size: 13px; }
+  .top-cats .amt { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+
+  footer { text-align: center; padding: 30px 20px; font-size: 11px; color: var(--text-muted); }
+  footer kbd { font-family: 'JetBrains Mono', monospace; background: var(--card); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; }
+  .empty-state .icon { font-size: 40px; color: var(--text-muted); margin-bottom: 10px; }
+  .empty-state h3 { margin-bottom: 4px; }
+  .empty-state p { color: var(--text-muted); font-size: 13px; }
+
+  .chart-wrap { position: relative; height: 320px; }
+
+  .vis-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-top: 14px; }
+  .vis-panel h4 { font-family: 'Fraunces', serif; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .vis-panel .hint { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+  .vis-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .vis-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s;
+  }
+  .vis-chip .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .vis-chip.hidden-cat { text-decoration: line-through; opacity: 0.5; background: var(--bg); color: var(--text-muted); }
+  .vis-chip.hidden-cat .dot { opacity: 0.4; }
+
+  .custom-trend-picker { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .ct-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .ct-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 11px; border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    cursor: pointer; user-select: none;
+  }
+  .ct-chip .dot { width: 10px; height: 10px; border-radius: 3px; }
+  .ct-chip.selected { color: white; border-color: transparent; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+
+  .inline-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  label.checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+  label.checkbox input { margin: 0; }
+
+  #keywordDialog { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .dlg-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+  .dlg-box { position: relative; background: var(--card); border-radius: 14px; padding: 22px; max-width: 440px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <h1>Kassensturz</h1>
+      <p>Dein persönlicher Finanz-Überblick</p>
+    </div>
+    <div class="stat-box">
+      <div class="label">Buchungen</div>
+      <div class="val" id="txCount">0</div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="tabs-inner" id="tabsInner">
+    <button class="tab-btn active" data-tab="import">↑ Import</button>
+    <button class="tab-btn" data-tab="transactions">☰ Buchungen</button>
+    <button class="tab-btn" data-tab="analysis">▤ Auswertung</button>
+    <button class="tab-btn" data-tab="categories">◐ Kategorien</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- IMPORT -->
+<section id="tab-import" class="tab-panel active">
+  <div class="card">
+    <h2>Kontoauszug importieren</h2>
+    <p>Exportiere deinen Kontoauszug aus deinem Online-Banking als CSV-Datei und lade sie hier hoch. Du kannst mehrere Dateien gleichzeitig auswählen – auch von verschiedenen Banken. Duplikate werden automatisch erkannt.</p>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">↑</div>
+      <div class="title">CSV-Datei(en) auswählen</div>
+      <div class="sub">Button unten antippen · oder auf dem Mac hineinziehen</div>
+      <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center">
+        <!-- iOS-Fix: Input direkt IM Label, visuell unsichtbar aber im normalen Layoutfluss.
+             Das Label ist der tatsächlich getappte Button und leitet den Tap direkt an den Input weiter. -->
+        <label class="btn-primary" style="padding:11px 20px;font-size:14px;cursor:pointer;display:inline-block;position:relative;overflow:hidden">
+          Datei wählen
+          <!-- iOS-Fix: Input muss minimal interagierbar bleiben (nicht opacity:0 + font-size:0),
+               sonst feuert der change-Event auf manchen iOS-Versionen nicht. -->
+          <input type="file" id="fileInput" multiple
+                 accept=".csv,.txt,.tsv,text/csv,text/plain,text/tab-separated-values,application/csv,application/vnd.ms-excel"
+                 style="position:absolute;inset:0;width:100%;height:100%;opacity:0.001;cursor:pointer">
+        </label>
+        <button class="btn-chip" id="pasteCsvBtn" type="button" style="padding:11px 20px;font-size:14px">CSV einfügen</button>
+      </div>
+    </div>
+    <div id="importMsg"></div>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">
+      <strong>iPhone-Anleitung:</strong><br>
+      1. CSV zuerst in der <strong>Dateien-App</strong> ablegen (aus Mail: Anhang antippen → Teilen → „In Dateien sichern“).<br>
+      2. Hier auf <strong>„Datei wählen“</strong> tippen → im Picker unten auf <strong>„Durchsuchen“</strong> wechseln (nicht „Fotos“!) → CSV auswählen.<br>
+      3. Falls die CSV ausgegraut ist: lange auf die Datei tippen → <strong>„Umbenennen“</strong> → Endung auf <code>.txt</code> ändern, dann hier auswählen – die App erkennt sie trotzdem.<br>
+      Alternative: CSV in der Dateien-App öffnen, Text markieren und kopieren, dann auf <strong>„CSV einfügen“</strong> tippen.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>⚠ Hinweis zu PDF-Dateien</h3>
+    <p>Die meisten Banken bieten neben PDF auch einen <strong>CSV-Export</strong> an (oft als "Umsätze exportieren"). CSV ist deutlich zuverlässiger. Schau zuerst in deinem Online-Banking nach der CSV-Option.</p>
+    <p>Die App erkennt gängige deutsche Bankformate (Sparkasse, Volksbank/VR, DKB, ING, Commerzbank, Deutsche Bank). Sollte ein Format nicht erkannt werden, melde dich.</p>
+  </div>
+
+  <div class="card" id="dangerCard" style="display:none; background: #fef2f2; border-color: #fecaca;">
+    <h3 style="color:#991b1b">Alle Daten löschen</h3>
+    <p style="color:#7f1d1d">Entfernt alle Buchungen. Kategorien und gelernte Regeln bleiben erhalten.</p>
+    <button class="btn-danger" id="clearAllBtn">Alle Buchungen löschen</button>
+  </div>
+
+  <div class="card">
+    <h3>ℹ Datenschutz</h3>
+    <p>Alle Daten bleiben <strong>ausschließlich in deinem Browser</strong> auf diesem Gerät (über localStorage). Sie werden nicht übertragen und nicht in die Cloud gesichert. Wenn du den Browser-Cache oder die Website-Daten löschst, sind auch die Daten weg – mach ggf. einen Export, wenn du sie langfristig behalten willst.</p>
+    <div class="inline-controls" style="margin-top:10px">
+      <button class="btn-primary" id="exportBtn">Daten exportieren (JSON)</button>
+      <label class="btn-primary" for="backupFile" style="padding:9px 16px;font-size:13px;cursor:pointer;display:inline-block">Backup einlesen</label>
+      <input type="file" id="backupFile" accept=".json,application/json"
+             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none">
+    </div>
+  </div>
+</section>
+
+<!-- TRANSACTIONS -->
+<section id="tab-transactions" class="tab-panel">
+  <div class="filter-bar">
+    <input type="search" id="searchInput" placeholder="Suche Empfänger oder Verwendungszweck...">
+    <button class="btn-chip active" data-filter="all">Alle</button>
+    <button class="btn-chip" data-filter="uncategorized">Unkategorisiert</button>
+    <button class="btn-chip" data-filter="suggested">Vorschläge</button>
+    <button class="btn-primary" id="addTxBtn" type="button" style="padding:8px 14px;font-size:13px">+ Neue Buchung</button>
+  </div>
+  <div id="txList"></div>
+</section>
+
+<!-- ANALYSIS -->
+<section id="tab-analysis" class="tab-panel">
+  <div class="card">
+    <div class="inline-controls" style="margin-bottom:10px">
+      <span style="font-size:12px;color:var(--text-muted);margin-right:4px">Zeitraum:</span>
+      <button class="btn-chip active" data-range="preset" id="rangePresetBtn">Jahr / Monat</button>
+      <button class="btn-chip" data-range="custom" id="rangeCustomBtn">Freier Zeitraum</button>
+    </div>
+    <div class="inline-controls" id="rangeControls">
+      <!-- wird dynamisch gefüllt -->
+    </div>
+    <div class="inline-controls" style="margin-top:10px">
+      <label class="checkbox"><input type="checkbox" id="includeIncome"> Einnahmen einbeziehen</label>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card-mini"><div class="lbl">↓ Ausgaben</div><div class="v" id="sumExpense" style="color:var(--danger)">—</div></div>
+    <div class="card-mini"><div class="lbl">↑ Einnahmen</div><div class="v" id="sumIncome" style="color:var(--success)">—</div></div>
+    <div class="card-mini"><div class="lbl">Saldo</div><div class="v" id="sumBalance">—</div></div>
+  </div>
+
+  <div class="inline-controls" style="margin: 16px 0">
+    <button class="btn-chip active" data-view="category">◐ Nach Kategorie</button>
+    <button class="btn-chip" data-view="month">▥ Nach Monat</button>
+    <button class="btn-chip" data-view="income-expense">⇅ Einnahmen / Ausgaben</button>
+    <button class="btn-chip" data-view="stacked">▤ Kategorien gestapelt</button>
+    <button class="btn-chip" data-view="trend">↗ Verlauf (Top 6)</button>
+    <button class="btn-chip" data-view="custom-trend">✎ Verlauf frei</button>
+  </div>
+
+  <div id="analysisContent"></div>
+  <div id="catVisibilityPanel"></div>
+</section>
+
+<!-- CATEGORIES -->
+<section id="tab-categories" class="tab-panel">
+  <div class="card">
+    <h3>Neue Kategorie</h3>
+    <div class="inline-controls">
+      <input type="color" id="newCatColor" value="#64748b">
+      <input type="text" id="newCatName" placeholder="Name (z.B. Kindergarten)" style="flex:1; min-width:140px">
+      <input type="text" id="newCatKeywords" placeholder="Stichwörter, kommagetrennt" style="flex:1; min-width:160px">
+      <button class="btn-primary" id="addCatBtn">+ Hinzufügen</button>
+    </div>
+  </div>
+  <div id="catList"></div>
+</section>
+
+</main>
+
+<footer>
+  Daten bleiben lokal auf deinem Gerät · Kassensturz v1.2
+</footer>
+
+<script>
+/* ============================================================ */
+/* Default categories                                           */
+/* ============================================================ */
+const DEFAULT_CATEGORIES = [
+  { id: "cat_lebensmittel", name: "Lebensmittel", color: "#e63946", keywords: ["rewe", "edeka", "aldi", "lidl", "netto", "penny", "kaufland", "dm", "rossmann"] },
+  { id: "cat_reisen", name: "Reisen", color: "#f77f00", keywords: ["booking", "airbnb", "lufthansa", "bahn", "flixbus", "hotel"] },
+  { id: "cat_essen", name: "Essen gehen", color: "#fcbf49", keywords: ["restaurant", "pizza", "cafe", "bistro", "lieferando", "mcdonalds"] },
+  { id: "cat_sport", name: "Sport", color: "#06d6a0", keywords: ["fitness", "gym", "mcfit", "sportstudio", "decathlon"] },
+  { id: "cat_miete", name: "Miete", color: "#118ab2", keywords: ["miete", "kaltmiete", "warmmiete"] },
+  { id: "cat_nebenkosten", name: "Mietnebenkosten", color: "#073b4c", keywords: ["nebenkosten", "strom", "gas", "wasser", "stadtwerke"] },
+  { id: "cat_darlehen", name: "Darlehen", color: "#7209b7", keywords: ["darlehen", "kredit"] },
+  { id: "cat_unterhalt", name: "Unterhaltszahlungen", color: "#b5179e", keywords: ["unterhalt"] },
+  { id: "cat_hausbedarf", name: "Hausbedarf", color: "#4361ee", keywords: ["obi", "hornbach", "bauhaus", "toom"] },
+  { id: "cat_haushalt", name: "Haushaltsbedarf", color: "#4cc9f0", keywords: ["haushalt", "reinigung"] },
+  { id: "cat_moebel", name: "Möbel", color: "#ff006e", keywords: ["ikea", "möbel", "xxxlutz", "höffner"] },
+  { id: "cat_hobbys", name: "Sonstige Hobbys", color: "#8338ec", keywords: ["hobby", "lotto", "toto"] },
+  { id: "cat_zinsen", name: "Zinszahlungen", color: "#3a0ca3", keywords: ["zins"] },
+  { id: "cat_tilgung", name: "Darlehenstilgungen", color: "#480ca8", keywords: ["tilgung"] },
+  { id: "cat_einkommen", name: "Einkommen", color: "#2a9d8f", keywords: ["gehalt", "lohn", "salary"] },
+  { id: "cat_versicherung", name: "Versicherungen", color: "#e76f51", keywords: ["versicherung", "allianz", "huk", "axa", "alte leipziger"] },
+  { id: "cat_abos", name: "Abos & Streaming", color: "#f4a261", keywords: ["netflix", "spotify", "disney", "amazon prime", "amznprime", "sky", "fohlentv", "strato"] },
+  { id: "cat_auto", name: "Auto & Tanken", color: "#264653", keywords: ["tankstelle", "aral", "shell", "esso", "jet", "tüv", "apcoa", "parkhaus", "parken"] },
+  { id: "cat_oepnv", name: "ÖPNV", color: "#457b9d", keywords: ["deutschlandticket", "vvs", "hvv", "bvg"] },
+  { id: "cat_gesundheit", name: "Gesundheit", color: "#e63946", keywords: ["apotheke", "arzt", "zahnarzt", "praxis"] },
+  { id: "cat_kleidung", name: "Kleidung", color: "#f72585", keywords: ["zalando", "h&m", "zara", "c&a"] },
+  { id: "cat_bargeld", name: "Bargeld", color: "#6c757d", keywords: ["geldautomat", "auszahlung", "atm", "bargeld"] },
+  { id: "cat_gebuehren", name: "Bankgebühren", color: "#adb5bd", keywords: ["kontoführung", "gebühr", "kontoabrechnung", "abschlussposten", "porto"] },
+  { id: "cat_social", name: "Soziale Netzwerke", color: "#0077b5", keywords: ["facebook", "instagram", "tiktok", "tictoc", "linkedin", "xing", "meta platforms"] },
+  { id: "cat_steuern", name: "Steuern", color: "#6b4423", keywords: ["steuern", "finanzamt", "einkommensteuer", "umsatzsteuer", "gewerbesteuer", "grundsteuer"] },
+  { id: "cat_sonstiges", name: "Sonstiges", color: "#495057", keywords: [] },
+];
+
+/* ============================================================ */
+/* State                                                         */
+/* ============================================================ */
+let state = {
+  transactions: [],
+  categories: [...DEFAULT_CATEGORIES],
+  partnerRules: {},  // "amazon eu" -> "cat_abos"  (exakter Empfänger-Match)
+  purposeRules: {},  // "pizza" -> "cat_essen"    (Stichwort im Verwendungszweck)
+  activeTab: "import",
+  filter: "all",
+  search: "",
+  analysisView: "category",
+  yearFilter: "all",
+  monthFilter: "all",
+  includeIncome: false,
+  hiddenInAnalysis: [],     // Kategorien-IDs, die in Auswertungen ausgeblendet sind (durchgestrichen)
+  customTrendCats: [],      // Kategorien-IDs für die freie Verlaufs-Ansicht
+  rangeMode: "preset",      // "preset" = Jahr/Monat-Dropdowns, "custom" = freier Zeitraum von-bis
+  customFrom: "",           // YYYY-MM-DD
+  customTo: "",             // YYYY-MM-DD
+};
+
+const STORAGE_KEY = "kassensturz:v1";
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      transactions: state.transactions,
+      categories: state.categories,
+      partnerRules: state.partnerRules,
+      purposeRules: state.purposeRules,
+      hiddenInAnalysis: state.hiddenInAnalysis,
+      customTrendCats: state.customTrendCats,
+    }));
+  } catch (e) { console.error("Save failed:", e); }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.transactions) state.transactions = d.transactions;
+    if (d.categories && d.categories.length) state.categories = d.categories;
+    if (d.partnerRules) state.partnerRules = d.partnerRules;
+    if (d.purposeRules) state.purposeRules = d.purposeRules;
+    if (Array.isArray(d.hiddenInAnalysis)) state.hiddenInAnalysis = d.hiddenInAnalysis;
+    if (Array.isArray(d.customTrendCats)) state.customTrendCats = d.customTrendCats;
+    // Migration: ältere Version hatte nur "rules" -> nach partnerRules
+    if (d.rules && !d.partnerRules) state.partnerRules = d.rules;
+
+    // Migration: Neu eingeführte Standard-Kategorien nachträglich ergänzen,
+    // damit auch bestehende Nutzer sie automatisch bekommen.
+    const existingIds = new Set(state.categories.map(c => c.id));
+    const NEW_CAT_IDS = ["cat_social", "cat_steuern"];
+    NEW_CAT_IDS.forEach(id => {
+      if (!existingIds.has(id)) {
+        const tmpl = DEFAULT_CATEGORIES.find(c => c.id === id);
+        if (tmpl) {
+          // Neue Kategorie direkt vor "Sonstiges" einfügen, sonst ans Ende
+          const sonstIdx = state.categories.findIndex(c => c.id === "cat_sonstiges");
+          if (sonstIdx >= 0) state.categories.splice(sonstIdx, 0, { ...tmpl });
+          else state.categories.push({ ...tmpl });
+        }
+      }
+    });
+  } catch (e) { console.error("Load failed:", e); }
+}
+
+/* ============================================================ */
+/* CSV Parsing                                                   */
+/* ============================================================ */
+
+// Eingebauter CSV-Parser (RFC 4180-kompatibel, unterstützt Quotes und Escapes).
+// Kein externes PapaParse mehr – die App muss auch offline / ohne CDN laufen.
+function _parseCSVWithDelimiter(text, delimiter) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+  const len = text.length;
+
+  while (i < len) {
+    const c = text[i];
+
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { // Escaped quote ""
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i++;
+        continue;
+      }
+      field += c;
+      i++;
+      continue;
+    }
+
+    if (c === '"') {
+      inQuotes = true;
+      i++;
+      continue;
+    }
+    if (c === delimiter) {
+      row.push(field);
+      field = "";
+      i++;
+      continue;
+    }
+    if (c === "\n" || c === "\r") {
+      row.push(field);
+      // Leere Zeilen (nur \r\n) überspringen
+      if (row.length > 1 || (row.length === 1 && row[0] !== "")) rows.push(row);
+      row = [];
+      field = "";
+      i++;
+      if (c === "\r" && text[i] === "\n") i++;
+      continue;
+    }
+    field += c;
+    i++;
+  }
+  // Letzte Zeile
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    if (row.length > 1 || (row.length === 1 && row[0] !== "")) rows.push(row);
+  }
+  return rows;
+}
+
+function parseCSV(text) {
+  const separators = [";", ","];
+  let best = null, bestScore = 0;
+  for (const sep of separators) {
+    const data = _parseCSVWithDelimiter(text, sep);
+    if (data.length > bestScore) { bestScore = data.length; best = data; }
+  }
+  return best || [];
+}
+
+function extractTransactions(rows, bankName) {
+  if (!rows || !rows.length) {
+    throw new Error("Datei ist leer oder konnte nicht als CSV gelesen werden.");
+  }
+
+  let headerIdx = -1;
+  const headerKeywords = ["buchung", "valuta", "betrag", "verwendung", "auftraggeber", "empfänger", "begünstigt", "datum", "umsatzart"];
+  for (let i = 0; i < Math.min(rows.length, 25); i++) {
+    const row = rows[i].map(c => (c || "").toLowerCase());
+    const matches = headerKeywords.filter(kw => row.some(c => c.includes(kw))).length;
+    if (matches >= 3) { headerIdx = i; break; }
+  }
+  if (headerIdx === -1) {
+    // Kleine Vorschau auf die ersten Zeilen, damit man sieht, was angekommen ist.
+    const preview = rows.slice(0, 3).map(r => r.slice(0, 4).join(" | ")).join(" · ");
+    throw new Error(`Kein bekannter CSV-Header gefunden. Erste Zeilen: ${preview.slice(0, 120)}`);
+  }
+
+  const headers = rows[headerIdx].map(h => (h || "").toLowerCase().trim());
+  const data = rows.slice(headerIdx + 1);
+
+  const dateIdx = headers.findIndex(h => h === "buchungstag" || h === "datum" || h.includes("buchungstag"));
+  const valutaIdx = headers.findIndex(h => h.includes("valuta") || h === "wert");
+  let amountIdx = headers.findIndex(h => h === "betrag");
+  if (amountIdx === -1) amountIdx = headers.findIndex(h => h.includes("betrag"));
+  if (amountIdx === -1) amountIdx = headers.findIndex(h => h === "umsatz" || h.includes("umsatz in"));
+  const purposeIdx = headers.findIndex(h => h.includes("verwendung") || h.includes("buchungstext") || h.includes("vorgang"));
+  const partnerIdx = headers.findIndex(h => h.includes("auftraggeber") || h.includes("empfänger") || h.includes("begünstigt") || h === "name");
+
+  const out = [];
+  for (const row of data) {
+    if (!row || row.length < 2) continue;
+
+    const rawDate = row[dateIdx >= 0 ? dateIdx : 0] || row[valutaIdx >= 0 ? valutaIdx : 1] || "";
+    const rawAmount = row[amountIdx >= 0 ? amountIdx : row.length - 2] || "";
+    const rawPurpose = row[purposeIdx >= 0 ? purposeIdx : 3] || "";
+    const rawPartner = row[partnerIdx >= 0 ? partnerIdx : 2] || "";
+
+    const m = String(rawDate).match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})/);
+    if (!m) continue;
+    let [, d, mo, y] = m;
+    if (y.length === 2) y = "20" + y;
+    const date = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+
+    let amt = String(rawAmount).trim().replace(/\s/g, "");
+    if (amt.includes(",") && amt.includes(".")) {
+      amt = amt.replace(/\./g, "").replace(",", ".");
+    } else if (amt.includes(",")) {
+      amt = amt.replace(",", ".");
+    } else if (amt.includes(".")) {
+      const parts = amt.split(".");
+      const last = parts[parts.length - 1].replace(/[^0-9]/g, "");
+      if (last.length === 3 && parts.length >= 2) amt = amt.replace(/\./g, "");
+    }
+    const num = parseFloat(amt);
+    if (isNaN(num)) continue;
+
+    out.push({
+      id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      date, amount: num,
+      purpose: String(rawPurpose).trim(),
+      partner: String(rawPartner).trim(),
+      bank: bankName,
+      categoryId: null,
+      confirmed: false,
+    });
+  }
+  return out;
+}
+
+/* ============================================================ */
+/* Categorization                                                */
+/* ============================================================ */
+function categorize(tx) {
+  const purposeLower = (tx.purpose || "").toLowerCase();
+  const partnerLower = (tx.partner || "").toLowerCase().trim();
+  const combined = `${partnerLower} ${purposeLower}`;
+
+  // 1. Priorität: gelernte Verwendungszweck-Stichwörter (spezifischer)
+  for (const keyword in state.purposeRules) {
+    if (purposeLower.includes(keyword)) {
+      return { categoryId: state.purposeRules[keyword], source: "learned-purpose" };
+    }
+  }
+
+  // 2. Priorität: gelernte Empfänger-Regel (exakter Partner-Match)
+  if (partnerLower && state.partnerRules[partnerLower]) {
+    return { categoryId: state.partnerRules[partnerLower], source: "learned-partner" };
+  }
+
+  // 3. Priorität: Standard-Kategorie-Stichwörter (Empfänger + Verwendungszweck)
+  for (const cat of state.categories) {
+    for (const kw of cat.keywords || []) {
+      if (kw && combined.includes(kw.toLowerCase())) {
+        return { categoryId: cat.id, source: "keyword" };
+      }
+    }
+  }
+
+  return { categoryId: null, source: null };
+}
+
+// Alle NICHT-bestätigten Buchungen neu kategorisieren (z. B. nach Anlage/Änderung einer Kategorie).
+// Bestätigte Buchungen bleiben unangetastet.
+function recategorizeUnconfirmed() {
+  state.transactions.forEach(t => {
+    if (!t.confirmed) {
+      const { categoryId } = categorize(t);
+      t.categoryId = categoryId;
+    }
+  });
+}
+
+/* ============================================================ */
+/* Formatting                                                    */
+/* ============================================================ */
+const EUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+function fmtEUR(n) { return EUR.format(n); }
+const MONTHS = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+function monthLabel(ym) {
+  if (!ym) return "";
+  const [y, m] = ym.split("-");
+  return `${MONTHS[parseInt(m) - 1]} ${y}`;
+}
+
+/* ============================================================ */
+/* Rendering                                                     */
+/* ============================================================ */
+function render() {
+  const activeCount = state.transactions.filter(t => !t.deleted).length;
+  document.getElementById("txCount").textContent = activeCount;
+  document.getElementById("dangerCard").style.display = state.transactions.length > 0 ? "block" : "none";
+
+  // Tabs
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === state.activeTab));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${state.activeTab}`));
+
+  if (state.activeTab === "transactions") renderTransactions();
+  if (state.activeTab === "analysis") renderAnalysis();
+  else {
+    const panel = document.getElementById("catVisibilityPanel");
+    if (panel) panel.innerHTML = "";
+  }
+  if (state.activeTab === "categories") renderCategories();
+}
+
+function renderTransactions() {
+  const list = document.getElementById("txList");
+  const catMap = Object.fromEntries(state.categories.map(c => [c.id, c]));
+
+  document.querySelectorAll("[data-filter]").forEach(b => b.classList.toggle("active", b.dataset.filter === state.filter));
+
+  let filtered = state.transactions.filter(t => {
+    if (state.filter === "uncategorized" && t.categoryId) return false;
+    if (state.filter === "suggested" && (!t.categoryId || t.confirmed)) return false;
+    if (state.search && !`${t.partner} ${t.purpose}`.toLowerCase().includes(state.search.toLowerCase())) return false;
+    return true;
+  });
+
+  if (state.transactions.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">☰</div><h3 class="display">Noch keine Buchungen</h3><p>Lade im Import-Tab deinen ersten Kontoauszug hoch.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(tx => {
+    const cat = tx.categoryId ? catMap[tx.categoryId] : null;
+    const isDeleted = !!tx.deleted;
+
+    const chip = cat
+      ? (tx.confirmed
+          ? `<span class="cat-chip" style="background:${cat.color};color:white" onclick="editCategory('${tx.id}')">${escapeHtml(cat.name)}</span>`
+          : `<span class="cat-chip suggested" style="border-color:${cat.color};color:${cat.color}" onclick="editCategory('${tx.id}')">${escapeHtml(cat.name)} ✦</span>`)
+      : `<span class="cat-chip none" onclick="editCategory('${tx.id}')">⚠ Kategorie wählen</span>`;
+
+    const confirmBtn = cat && !tx.confirmed && !isDeleted
+      ? `<button class="btn-ghost" onclick="confirmTx('${tx.id}')" title="Vorschlag bestätigen" style="color:var(--success)">✓</button>` : "";
+
+    // Aktions-Button: bei aktiven Zeilen Löschen (✕), bei gelöschten Reaktivieren (↩)
+    const actionBtn = isDeleted
+      ? `<button class="btn-ghost" onclick="restoreTx('${tx.id}')" title="Wieder aktivieren" style="color:var(--success);font-size:18px">↩</button>`
+      : `<button class="btn-ghost" onclick="deleteTx('${tx.id}')" title="Deaktivieren">✕</button>`;
+
+    const deletedBadge = isDeleted ? `<span class="tx-badge-deleted">gelöscht</span>` : "";
+
+    const amtClass = tx.amount < 0 ? "neg" : "pos";
+    return `<div class="tx-row${isDeleted ? ' deleted' : ''}">
+      <div class="tx-main">
+        <div class="tx-meta"><span class="mono">${tx.date}</span> · ${escapeHtml(tx.bank)}</div>
+        <div class="tx-partner">${escapeHtml(tx.partner || "—")}</div>
+        <div class="tx-purpose">${escapeHtml(tx.purpose)}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amount ${amtClass}">${fmtEUR(tx.amount)}</div>
+        ${deletedBadge}
+        ${chip}
+        ${confirmBtn}
+        ${actionBtn}
+      </div>
+    </div>`;
+  }).join("");
+
+  if (filtered.length === 0 && state.transactions.length > 0) {
+    list.innerHTML += `<div class="empty-state"><p>Keine Buchungen mit diesem Filter.</p></div>`;
+  }
+}
+
+function editCategory(txId) {
+  const tx = state.transactions.find(t => t.id === txId);
+  if (!tx) return;
+  const opts = ['<option value="">— keine —</option>'].concat(
+    state.categories.map(c => `<option value="${c.id}" ${tx.categoryId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`)
+  ).join("");
+
+  // Inline-replace chip with select
+  const row = event.target.closest(".tx-row");
+  const rightSide = row.querySelector(".tx-right");
+  const existing = rightSide.querySelectorAll(".cat-chip, .btn-ghost");
+
+  const select = document.createElement("select");
+  select.innerHTML = opts;
+  select.autofocus = true;
+  select.onchange = () => {
+    confirmCategoryChange(txId, select.value || null);
+  };
+  select.onblur = () => render();
+
+  existing.forEach(e => e.remove());
+  rightSide.appendChild(select);
+  select.focus();
+}
+
+function confirmCategoryChange(txId, catId) {
+  const tx = state.transactions.find(t => t.id === txId);
+  if (!tx) return;
+  tx.categoryId = catId;
+  tx.confirmed = true;
+
+  if (catId) {
+    learnFromTransaction(tx, catId, /*isPlainConfirmation*/ false);
+  }
+
+  saveState();
+  render();
+}
+
+function confirmTx(txId) {
+  const tx = state.transactions.find(t => t.id === txId);
+  if (!tx) return;
+  tx.confirmed = true;
+  if (tx.categoryId) learnFromTransaction(tx, tx.categoryId, /*isPlainConfirmation*/ true);
+  saveState();
+  render();
+}
+
+// Hauptfunktion: lernt Regeln aus einer bestätigten Buchung
+// isPlainConfirmation = true bedeutet: Der Nutzer hat NUR einen bestehenden Vorschlag
+// bestätigt (Tick-Button) – d.h. die Kategorie stammt schon aus einer Regel oder einem
+// Default-Keyword. In diesem Fall keine lästige Rückfrage: die Regel existiert ja schon.
+function learnFromTransaction(tx, catId, isPlainConfirmation) {
+  const partner = (tx.partner || "").toLowerCase().trim();
+  const purpose = (tx.purpose || "").trim();
+
+  // Wenn eine Partner-Regel für diesen Empfänger bereits auf diese Kategorie zeigt,
+  // oder wenn eine Purpose-Regel im Verwendungszweck bereits matcht und auf diese
+  // Kategorie zeigt, gibt es nichts Neues zu lernen.
+  const partnerRuleMatches = partner && state.partnerRules[partner] === catId;
+  const purposeRuleMatches = Object.entries(state.purposeRules).some(
+    ([kw, cId]) => cId === catId && (tx.purpose || "").toLowerCase().includes(kw)
+  );
+  if (partnerRuleMatches || purposeRuleMatches) {
+    return; // Regel schon vorhanden – nichts tun, keine Rückfrage
+  }
+
+  // Prüfen: gibt es andere Buchungen mit gleichem Empfänger aber anderer Kategorie?
+  const samePartnerDifferentCats = state.transactions.filter(t =>
+    t.id !== tx.id &&
+    !t.deleted &&
+    (t.partner || "").toLowerCase().trim() === partner &&
+    t.confirmed &&
+    t.categoryId && t.categoryId !== catId
+  );
+
+  if (samePartnerDifferentCats.length > 0) {
+    // Empfänger ist mehrdeutig: Dialog zeigen (Stichwort wählen)
+    // Bestehende Partner-Regel für diesen Empfänger entfernen, da nicht mehr eindeutig
+    delete state.partnerRules[partner];
+    askForRule(tx, catId, /*ambiguousPartner*/ true);
+  } else if (isPlainConfirmation && partner) {
+    // Bei reiner Bestätigung eines Vorschlags ohne Mehrdeutigkeit: still Partner-Regel
+    // setzen, ohne zu fragen.
+    state.partnerRules[partner] = catId;
+  } else if (partner) {
+    // Nutzer hat die Kategorie aktiv ausgewählt: Dialog anbieten, damit er wählen kann,
+    // ob Empfänger oder Stichwort gemerkt werden soll (oder gar nichts).
+    askForRule(tx, catId, /*ambiguousPartner*/ false);
+  }
+}
+
+// Einheitlicher Dialog: Was soll gemerkt werden? (Empfänger, Stichwort, oder nichts)
+function askForRule(tx, catId, ambiguousPartner) {
+  const cat = state.categories.find(c => c.id === catId);
+  if (!cat) return;
+
+  const partner = (tx.partner || "").trim();
+  const partnerLower = partner.toLowerCase();
+
+  // Wörter aus Verwendungszweck extrahieren
+  const words = (tx.purpose || "")
+    .split(/[\s,.\/\-;:()]+/)
+    .map(w => w.trim())
+    .filter(w => w.length >= 3 && !/^\d+$/.test(w) && !/^[a-z0-9]{10,}$/i.test(w))
+    .slice(0, 10);
+
+  // Wenn weder Empfänger noch sinnvolle Wörter verfügbar: nichts zu fragen
+  if (!partner && words.length === 0) return;
+
+  const existing = document.getElementById("keywordDialog");
+  if (existing) existing.remove();
+
+  const header = ambiguousPartner
+    ? `<h3 class="display" style="font-size:18px;margin-bottom:6px">Stichwort zum Merken?</h3>
+       <p style="font-size:13px;color:var(--text-soft);margin-bottom:14px">
+         Der Empfänger <strong>${escapeHtml(partner)}</strong> kommt in mehreren Kategorien vor.
+         Wähle ein Stichwort aus dem Verwendungszweck, das typisch für
+         <strong style="color:${cat.color}">${escapeHtml(cat.name)}</strong> ist.
+       </p>`
+    : `<h3 class="display" style="font-size:18px;margin-bottom:6px">Wie soll ich mir das merken?</h3>
+       <p style="font-size:13px;color:var(--text-soft);margin-bottom:14px">
+         Die Kategorie <strong style="color:${cat.color}">${escapeHtml(cat.name)}</strong> beim nächsten Mal
+         automatisch vorschlagen – woran soll sich die App dafür erinnern?
+       </p>`;
+
+  const partnerBlock = (!ambiguousPartner && partner)
+    ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Empfänger merken:</div>
+       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+         <button class="btn-chip" onclick="saveRule('partner', ${jsonAttr(partnerLower)}, '${catId}')">
+           ✓ ${escapeHtml(partner)}
+         </button>
+       </div>`
+    : "";
+
+  const purposeBlock = words.length > 0
+    ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">
+         …oder ein Stichwort aus dem Verwendungszweck merken:
+       </div>
+       <div style="font-size:12px;background:var(--bg);padding:8px 10px;border-radius:6px;margin-bottom:8px;word-break:break-word">${escapeHtml(tx.purpose)}</div>
+       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+         ${words.map(w => `<button class="btn-chip" onclick="saveRule('purpose', ${jsonAttr(w.toLowerCase())}, '${catId}')">${escapeHtml(w)}</button>`).join("")}
+       </div>`
+    : "";
+
+  const dialog = document.createElement("div");
+  dialog.id = "keywordDialog";
+  dialog.innerHTML = `
+    <div class="dlg-backdrop" onclick="document.getElementById('keywordDialog').remove()"></div>
+    <div class="dlg-box">
+      ${header}
+      ${partnerBlock}
+      ${purposeBlock}
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-chip" onclick="document.getElementById('keywordDialog').remove()">Nichts merken</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+}
+
+function saveRule(type, key, catId) {
+  if (key && catId) {
+    if (type === "partner") {
+      state.partnerRules[key] = catId;
+    } else if (type === "purpose") {
+      state.purposeRules[key] = catId;
+    }
+    recategorizeUnconfirmed();
+    saveState();
+    render();
+  }
+  const dlg = document.getElementById("keywordDialog");
+  if (dlg) dlg.remove();
+}
+
+// Rückwärtskompatibler Alias (falls irgendwo noch referenziert)
+function saveKeyword(keyword, catId) { saveRule("purpose", keyword, catId); }
+
+function deleteTx(txId) {
+  const tx = state.transactions.find(t => t.id === txId);
+  if (!tx) return;
+  tx.deleted = true;
+  saveState();
+  render();
+}
+
+function restoreTx(txId) {
+  const tx = state.transactions.find(t => t.id === txId);
+  if (!tx) return;
+  delete tx.deleted;
+  saveState();
+  render();
+}
+
+/* ----- Analysis ---- */
+let charts = {};
+function destroyCharts() { Object.values(charts).forEach(c => c.destroy()); charts = {}; }
+
+function renderAnalysis() {
+  const catMap = Object.fromEntries(state.categories.map(c => [c.id, c]));
+  const isHidden = (catId) => state.hiddenInAnalysis.includes(catId || "__none__");
+
+  // Vorhandene Monate / Jahre ermitteln
+  const months = new Set(), years = new Set();
+  state.transactions.forEach(t => { if (t.date) { months.add(t.date.slice(0, 7)); years.add(t.date.slice(0, 4)); } });
+
+  // Zeitraum-Modus-Buttons aktiv setzen
+  document.querySelectorAll("[data-range]").forEach(b => b.classList.toggle("active", b.dataset.range === state.rangeMode));
+
+  // Zeitraum-Controls dynamisch rendern
+  const rangeEl = document.getElementById("rangeControls");
+  if (state.rangeMode === "custom") {
+    // Default-Werte ermitteln, falls noch leer: jüngste und älteste Buchung
+    if (!state.customFrom || !state.customTo) {
+      const dates = state.transactions.filter(t => !t.deleted).map(t => t.date).sort();
+      if (dates.length) {
+        if (!state.customFrom) state.customFrom = dates[0];
+        if (!state.customTo) state.customTo = dates[dates.length - 1];
+      }
+    }
+    rangeEl.innerHTML = `
+      <label style="font-size:12px;color:var(--text-soft)">Von
+        <input type="date" id="customFrom" value="${state.customFrom}" style="margin-left:6px">
+      </label>
+      <label style="font-size:12px;color:var(--text-soft)">Bis
+        <input type="date" id="customTo" value="${state.customTo}" style="margin-left:6px">
+      </label>
+    `;
+    document.getElementById("customFrom").addEventListener("change", e => { state.customFrom = e.target.value; render(); });
+    document.getElementById("customTo").addEventListener("change", e => { state.customTo = e.target.value; render(); });
+  } else {
+    // Bei "Einnahmen/Ausgaben"-Auswertung das Monats-Dropdown weglassen – dort wird immer über das ganze Jahr gezeigt.
+    const showMonth = state.analysisView !== "income-expense";
+    const yearOpts = `<option value="all">Alle Jahre</option>` + [...years].sort().reverse().map(y => `<option value="${y}" ${state.yearFilter === y ? "selected" : ""}>${y}</option>`).join("");
+    const monthOpts = `<option value="all">Alle Monate</option>` + [...months].sort().reverse().map(m => `<option value="${m}" ${state.monthFilter === m ? "selected" : ""}>${monthLabel(m)}</option>`).join("");
+    rangeEl.innerHTML = `
+      <select id="yearFilter">${yearOpts}</select>
+      ${showMonth ? `<select id="monthFilter">${monthOpts}</select>` : ""}
+    `;
+    document.getElementById("yearFilter").addEventListener("change", e => { state.yearFilter = e.target.value; render(); });
+    if (showMonth) {
+      document.getElementById("monthFilter").addEventListener("change", e => { state.monthFilter = e.target.value; render(); });
+    }
+  }
+
+  if (state.transactions.length === 0) {
+    document.getElementById("analysisContent").innerHTML = `<div class="empty-state"><div class="icon">▤</div><h3 class="display">Keine Daten zum Auswerten</h3><p>Importiere zuerst Buchungen.</p></div>`;
+    document.getElementById("sumExpense").textContent = "—";
+    document.getElementById("sumIncome").textContent = "—";
+    document.getElementById("sumBalance").textContent = "—";
+    document.getElementById("catVisibilityPanel").innerHTML = "";
+    return;
+  }
+
+  // Zentrale Zeitraum-Filter-Funktion – berücksichtigt den gewählten Modus.
+  // Bei "income-expense" wird im preset-Modus bewusst KEIN Monats-Filter angewendet,
+  // damit der Verlauf über alle Monate sichtbar ist.
+  const matchesRange = (t, opts = {}) => {
+    const ignoreMonth = !!opts.ignoreMonth;
+    if (state.rangeMode === "custom") {
+      if (state.customFrom && t.date < state.customFrom) return false;
+      if (state.customTo && t.date > state.customTo) return false;
+      return true;
+    }
+    // preset
+    if (state.yearFilter !== "all" && t.date.slice(0, 4) !== state.yearFilter) return false;
+    if (!ignoreMonth && state.monthFilter !== "all" && t.date.slice(0, 7) !== state.monthFilter) return false;
+    return true;
+  };
+
+  // Filter transactions: Zeitraum-Filter + ausgeblendete Kategorien ausschließen + gelöschte ignorieren
+  const inTimeRange = state.transactions.filter(t => {
+    if (t.deleted) return false;
+    return matchesRange(t);
+  });
+
+  const filtered = inTimeRange.filter(t => !isHidden(t.categoryId || "__none__"));
+
+  const expenses = filtered.filter(t => t.amount < 0);
+  const incomes = filtered.filter(t => t.amount > 0);
+  const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
+  const totalIncome = incomes.reduce((s, t) => s + t.amount, 0);
+
+  document.getElementById("sumExpense").textContent = fmtEUR(totalExpense);
+  document.getElementById("sumIncome").textContent = fmtEUR(totalIncome);
+  const balance = totalIncome + totalExpense;
+  const balEl = document.getElementById("sumBalance");
+  balEl.textContent = fmtEUR(balance);
+  balEl.style.color = balance >= 0 ? "var(--success)" : "var(--danger)";
+
+  // View switcher
+  document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === state.analysisView));
+
+  const forChart = state.includeIncome ? filtered : expenses;
+
+  destroyCharts();
+  const content = document.getElementById("analysisContent");
+
+  if (state.analysisView === "category") {
+    const byCat = {};
+    forChart.forEach(t => {
+      const k = t.categoryId || "none";
+      if (!byCat[k]) byCat[k] = 0;
+      byCat[k] += Math.abs(t.amount);
+    });
+    const entries = Object.entries(byCat).map(([id, v]) => ({
+      id, value: v,
+      name: id === "none" ? "Unkategorisiert" : (catMap[id]?.name || "?"),
+      color: id === "none" ? "#d6d3d1" : (catMap[id]?.color || "#999"),
+    })).sort((a, b) => b.value - a.value);
+
+    content.innerHTML = `
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Tipp: Doppelklick auf eine Kategorie (Kreis-Segment oder Listeneintrag) zeigt alle Buchungen dieser Kategorie im gewählten Zeitraum.</p>
+      <div class="grid-2">
+        <div class="card"><h3>Verteilung</h3><div class="chart-wrap"><canvas id="pieChart"></canvas></div></div>
+        <div class="card"><h3>Top-Kategorien</h3>
+          <ul class="top-cats">${entries.slice(0, 12).map(e => `
+            <li ondblclick="showCategoryTransactions('${e.id}')" style="cursor:pointer" title="Doppelklick für alle Buchungen"><span class="dot" style="background:${e.color}"></span><span class="name">${escapeHtml(e.name)}</span><span class="amt">${fmtEUR(e.value)}</span></li>
+          `).join("")}</ul>
+        </div>
+      </div>`;
+
+    const ctx = document.getElementById("pieChart").getContext("2d");
+    charts.pie = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: entries.map(e => e.name),
+        datasets: [{ data: entries.map(e => e.value), backgroundColor: entries.map(e => e.color), borderWidth: 2, borderColor: "#fff" }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { font: { size: 11 }, boxWidth: 12 } },
+          tooltip: { callbacks: { label: c => `${c.label}: ${fmtEUR(c.parsed)}` } }
+        },
+        // Doppelklick auf Segment -> Buchungsliste
+        onClick: (evt, elements, chart) => {
+          // wir nutzen onClick nur, um Tooltips etc. nicht zu stören; Dop­pelklick unten
+        },
+      }
+    });
+
+    // Doppelklick auf das Canvas -> das Segment unterm Cursor öffnen
+    const pieCanvas = document.getElementById("pieChart");
+    pieCanvas.addEventListener("dblclick", (e) => {
+      const points = charts.pie.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+      if (points.length) {
+        const idx = points[0].index;
+        const entry = entries[idx];
+        if (entry) showCategoryTransactions(entry.id);
+      }
+    });
+  }
+
+  else if (state.analysisView === "month") {
+    const byMonth = {};
+    // Alle Monate zeigen -> Monats-Filter ignorieren, aber Jahr/custom-range respektieren
+    const base = state.transactions.filter(t => {
+      if (t.deleted) return false;
+      if (!matchesRange(t, { ignoreMonth: true })) return false;
+      if (isHidden(t.categoryId || "__none__")) return false;
+      return state.includeIncome ? true : t.amount < 0;
+    });
+    base.forEach(t => {
+      const k = t.date.slice(0, 7);
+      if (!byMonth[k]) byMonth[k] = { expense: 0, income: 0 };
+      if (t.amount < 0) byMonth[k].expense += Math.abs(t.amount);
+      else byMonth[k].income += t.amount;
+    });
+    const keys = Object.keys(byMonth).sort();
+
+    content.innerHTML = `<div class="card"><h3>Pro Monat</h3><div class="chart-wrap" style="height:380px"><canvas id="barChart"></canvas></div></div>`;
+
+    const datasets = [{
+      label: "Ausgaben",
+      data: keys.map(k => byMonth[k].expense),
+      backgroundColor: "#1c1917",
+      borderRadius: 4,
+    }];
+    if (state.includeIncome) {
+      datasets.push({
+        label: "Einnahmen",
+        data: keys.map(k => byMonth[k].income),
+        backgroundColor: "#059669",
+        borderRadius: 4,
+      });
+    }
+
+    const ctx = document.getElementById("barChart").getContext("2d");
+    charts.bar = new Chart(ctx, {
+      type: "bar",
+      data: { labels: keys.map(monthLabel), datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtEUR(c.parsed.y)}` } } },
+        scales: { y: { ticks: { callback: v => fmtEUR(v) } } }
+      }
+    });
+  }
+
+  else if (state.analysisView === "income-expense") {
+    // Einnahmen vs. Ausgaben mit Saldo-Linie (respektiert ausgeblendete Kategorien, ignoriert gelöschte)
+    const byMonth = {};
+    const base = state.transactions.filter(t => {
+      if (t.deleted) return false;
+      if (!matchesRange(t, { ignoreMonth: true })) return false;
+      if (isHidden(t.categoryId || "__none__")) return false;
+      return true;
+    });
+    base.forEach(t => {
+      const k = t.date.slice(0, 7);
+      if (!byMonth[k]) byMonth[k] = { expense: 0, income: 0 };
+      if (t.amount < 0) byMonth[k].expense += Math.abs(t.amount);
+      else byMonth[k].income += t.amount;
+    });
+    const keys = Object.keys(byMonth).sort();
+    const saldoData = keys.map(k => byMonth[k].income - byMonth[k].expense);
+    const totalIncome2 = keys.reduce((s, k) => s + byMonth[k].income, 0);
+    const totalExpense2 = keys.reduce((s, k) => s + byMonth[k].expense, 0);
+    const avgSaldo = keys.length ? (totalIncome2 - totalExpense2) / keys.length : 0;
+
+    content.innerHTML = `
+      <div class="grid-3">
+        <div class="card-mini"><div class="lbl">Ø Einnahmen/Monat</div><div class="v" style="color:var(--success);font-size:16px">${fmtEUR(keys.length ? totalIncome2 / keys.length : 0)}</div></div>
+        <div class="card-mini"><div class="lbl">Ø Ausgaben/Monat</div><div class="v" style="color:var(--danger);font-size:16px">${fmtEUR(keys.length ? totalExpense2 / keys.length : 0)}</div></div>
+        <div class="card-mini"><div class="lbl">Ø Saldo/Monat</div><div class="v" style="color:${avgSaldo >= 0 ? 'var(--success)' : 'var(--danger)'};font-size:16px">${fmtEUR(avgSaldo)}</div></div>
+      </div>
+      <div class="card"><h3>Einnahmen vs. Ausgaben pro Monat</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Balken: Einnahmen (grün) und Ausgaben (dunkel). Linie: monatlicher Saldo (Einnahmen minus Ausgaben).</p>
+        <div class="chart-wrap" style="height:400px"><canvas id="ieChart"></canvas></div>
+      </div>`;
+
+    const ctx = document.getElementById("ieChart").getContext("2d");
+    charts.ie = new Chart(ctx, {
+      data: {
+        labels: keys.map(monthLabel),
+        datasets: [
+          { type: "bar", label: "Einnahmen", data: keys.map(k => byMonth[k].income), backgroundColor: "#059669", borderRadius: 4, order: 2 },
+          { type: "bar", label: "Ausgaben", data: keys.map(k => byMonth[k].expense), backgroundColor: "#1c1917", borderRadius: 4, order: 2 },
+          { type: "line", label: "Saldo", data: saldoData, borderColor: "#d97706", backgroundColor: "rgba(217,119,6,0.15)", borderWidth: 2.5, tension: 0.3, pointRadius: 4, pointBackgroundColor: "#d97706", fill: false, order: 1 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtEUR(c.parsed.y)}` } } },
+        scales: { y: { ticks: { callback: v => fmtEUR(v) } } },
+      },
+    });
+  }
+
+  else if (state.analysisView === "stacked") {
+    // Gestapelte Balken: alle (sichtbaren) Kategorien pro Monat
+    const byCatMonth = {};
+    const catTotals = {};
+    forChart.forEach(t => {
+      const catId = t.categoryId || "none";
+      const catName = catId === "none" ? "Unkategorisiert" : (catMap[catId]?.name || "?");
+      const catColor = catId === "none" ? "#d6d3d1" : (catMap[catId]?.color || "#999");
+      const ym = t.date.slice(0, 7);
+      if (!byCatMonth[catName]) byCatMonth[catName] = { color: catColor, months: {} };
+      if (!byCatMonth[catName].months[ym]) byCatMonth[catName].months[ym] = 0;
+      byCatMonth[catName].months[ym] += Math.abs(t.amount);
+      catTotals[catName] = (catTotals[catName] || 0) + Math.abs(t.amount);
+    });
+    const monthKeys = [...new Set(forChart.map(t => t.date.slice(0, 7)))].sort();
+    const sortedCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+
+    content.innerHTML = `<div class="card"><h3>Ausgaben pro Monat nach Kategorie (gestapelt)</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Jeder Balken zeigt die Zusammensetzung eines Monats. So siehst du, wie sich deine Ausgaben-Struktur verändert.</p>
+      <div class="chart-wrap" style="height:440px"><canvas id="stackedChart"></canvas></div></div>`;
+
+    const datasets = sortedCats.map(name => ({
+      label: name,
+      data: monthKeys.map(m => byCatMonth[name].months[m] || 0),
+      backgroundColor: byCatMonth[name].color,
+      borderRadius: 2,
+      borderWidth: 0,
+    }));
+
+    const ctx = document.getElementById("stackedChart").getContext("2d");
+    charts.stacked = new Chart(ctx, {
+      type: "bar",
+      data: { labels: monthKeys.map(monthLabel), datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+          tooltip: {
+            callbacks: {
+              label: c => `${c.dataset.label}: ${fmtEUR(c.parsed.y)}`,
+              footer: items => `Gesamt: ${fmtEUR(items.reduce((s, it) => s + it.parsed.y, 0))}`,
+            },
+          },
+        },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, ticks: { callback: v => fmtEUR(v) } },
+        },
+      },
+    });
+  }
+
+  else if (state.analysisView === "trend") {
+    // Top categories, over time
+    const byCatMonth = {};
+    const catTotals = {};
+    forChart.forEach(t => {
+      const catName = t.categoryId ? (catMap[t.categoryId]?.name || "?") : "Unkategorisiert";
+      const catColor = t.categoryId ? (catMap[t.categoryId]?.color || "#999") : "#d6d3d1";
+      const ym = t.date.slice(0, 7);
+      if (!byCatMonth[catName]) byCatMonth[catName] = { color: catColor, months: {} };
+      if (!byCatMonth[catName].months[ym]) byCatMonth[catName].months[ym] = 0;
+      byCatMonth[catName].months[ym] += Math.abs(t.amount);
+      catTotals[catName] = (catTotals[catName] || 0) + Math.abs(t.amount);
+    });
+    const months = [...new Set(forChart.map(t => t.date.slice(0, 7)))].sort();
+    const topCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 6).map(e => e[0]);
+
+    content.innerHTML = `<div class="card"><h3>Verlauf der Top-6-Kategorien</h3><div class="chart-wrap" style="height:400px"><canvas id="lineChart"></canvas></div></div>`;
+
+    const datasets = topCats.map(name => ({
+      label: name,
+      data: months.map(m => byCatMonth[name].months[m] || 0),
+      borderColor: byCatMonth[name].color,
+      backgroundColor: byCatMonth[name].color + "20",
+      tension: 0.3,
+      borderWidth: 2,
+    }));
+
+    const ctx = document.getElementById("lineChart").getContext("2d");
+    charts.line = new Chart(ctx, {
+      type: "line",
+      data: { labels: months.map(monthLabel), datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtEUR(c.parsed.y)}` } } },
+        scales: { y: { ticks: { callback: v => fmtEUR(v) } } }
+      }
+    });
+  }
+
+  else if (state.analysisView === "custom-trend") {
+    renderCustomTrend(inTimeRange);
+  }
+
+  // Panel mit "Kategorien ein/ausblenden" unterhalb der Charts (auf den aktiven View bezogen)
+  renderCatVisibilityPanel(inTimeRange);
+}
+
+/* ============================================================ */
+/* Custom trend: frei wählbare Kategorien                        */
+/* ============================================================ */
+function renderCustomTrend(baseTx) {
+  const content = document.getElementById("analysisContent");
+  const catMap = Object.fromEntries(state.categories.map(c => [c.id, c]));
+
+  // Kategorien, die im aktuellen Zeitraum überhaupt vorkommen (+ "Unkategorisiert")
+  const presentIds = new Set();
+  baseTx.forEach(t => presentIds.add(t.categoryId || "__none__"));
+  // Alle Kategorien aus dem State, die im Zeitraum vorkommen
+  const available = state.categories.filter(c => presentIds.has(c.id));
+  const hasUncat = presentIds.has("__none__");
+
+  // Auswahl-Chips
+  const selected = new Set(state.customTrendCats);
+  const chipHtml = [
+    ...available.map(c => {
+      const isSel = selected.has(c.id);
+      return `<span class="ct-chip ${isSel ? 'selected' : ''}" 
+              style="${isSel ? `background:${c.color};` : `color:${c.color};`}"
+              onclick="toggleTrendCat('${c.id}')">
+              <span class="dot" style="background:${c.color}"></span>${escapeHtml(c.name)}
+            </span>`;
+    }),
+    hasUncat ? `<span class="ct-chip ${selected.has('__none__') ? 'selected' : ''}" 
+                style="${selected.has('__none__') ? 'background:#78716c;color:white;' : 'color:#78716c;'}"
+                onclick="toggleTrendCat('__none__')">
+                <span class="dot" style="background:#78716c"></span>Unkategorisiert
+              </span>` : "",
+  ].join("");
+
+  const selectedList = [...selected].filter(id => presentIds.has(id));
+
+  let chartHtml = "";
+  if (selectedList.length === 0) {
+    chartHtml = `<div class="empty-state" style="padding:40px 20px">
+      <div class="icon">✎</div>
+      <h3 class="display">Wähle eine oder mehrere Kategorien</h3>
+      <p>Die App zeigt dann den monatlichen Verlauf nur für deine Auswahl.</p>
+    </div>`;
+  } else {
+    chartHtml = `<div class="chart-wrap" style="height:400px"><canvas id="customTrendChart"></canvas></div>`;
+  }
+
+  content.innerHTML = `
+    <div class="custom-trend-picker">
+      <h3 style="font-family:'Fraunces',serif;font-size:16px;margin-bottom:4px">Kategorien wählen</h3>
+      <p style="font-size:12px;color:var(--text-muted)">Tippe an/aus. Mehrfachauswahl möglich.</p>
+      <div class="ct-chips">${chipHtml}</div>
+      ${selectedList.length > 0 ? `<div style="margin-top:10px"><button class="btn-chip" onclick="clearTrendCats()">Auswahl zurücksetzen</button></div>` : ""}
+    </div>
+    <div class="card"><h3>Monatlicher Verlauf (freie Auswahl)</h3>
+      ${chartHtml}
+    </div>
+  `;
+
+  if (selectedList.length === 0) return;
+
+  // Daten bauen: pro Monat × gewählte Kategorie die Summe der |Beträge|
+  const monthsSet = new Set();
+  baseTx.forEach(t => monthsSet.add(t.date.slice(0, 7)));
+  const months = [...monthsSet].sort();
+
+  const datasets = selectedList.map(id => {
+    const name = id === "__none__" ? "Unkategorisiert" : (catMap[id]?.name || "?");
+    const color = id === "__none__" ? "#78716c" : (catMap[id]?.color || "#999");
+    const byMonth = Object.fromEntries(months.map(m => [m, 0]));
+    baseTx.forEach(t => {
+      const tid = t.categoryId || "__none__";
+      if (tid !== id) return;
+      byMonth[t.date.slice(0, 7)] += Math.abs(t.amount);
+    });
+    return {
+      label: name,
+      data: months.map(m => byMonth[m]),
+      borderColor: color,
+      backgroundColor: color + "20",
+      tension: 0.3,
+      borderWidth: 2.5,
+      pointRadius: 3,
+    };
+  });
+
+  const ctx = document.getElementById("customTrendChart").getContext("2d");
+  charts.customTrend = new Chart(ctx, {
+    type: "line",
+    data: { labels: months.map(monthLabel), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtEUR(c.parsed.y)}` } },
+      },
+      scales: { y: { ticks: { callback: v => fmtEUR(v) }, beginAtZero: true } }
+    }
+  });
+}
+
+function toggleTrendCat(id) {
+  const i = state.customTrendCats.indexOf(id);
+  if (i >= 0) state.customTrendCats.splice(i, 1);
+  else state.customTrendCats.push(id);
+  saveState();
+  render();
+}
+
+function clearTrendCats() {
+  state.customTrendCats = [];
+  saveState();
+  render();
+}
+
+/* ============================================================ */
+/* Kategorien ein-/ausblenden (für Auswertungen)                 */
+/* ============================================================ */
+function renderCatVisibilityPanel(baseTx) {
+  const panel = document.getElementById("catVisibilityPanel");
+  if (!panel) return;
+
+  // Welche Kategorien kommen im Zeitraum überhaupt vor?
+  const present = new Set();
+  baseTx.forEach(t => present.add(t.categoryId || "__none__"));
+
+  const available = state.categories.filter(c => present.has(c.id));
+  const hasUncat = present.has("__none__");
+
+  if (available.length === 0 && !hasUncat) { panel.innerHTML = ""; return; }
+
+  const chipHtml = [
+    ...available.map(c => {
+      const hidden = state.hiddenInAnalysis.includes(c.id);
+      return `<span class="vis-chip ${hidden ? 'hidden-cat' : ''}" 
+              style="${hidden ? '' : `background:${c.color}20;color:${c.color};`}"
+              onclick="toggleCatVisibility('${c.id}')"
+              title="${hidden ? 'Klick, um wieder einzublenden' : 'Klick, um auszublenden'}">
+                <span class="dot" style="background:${c.color}"></span>${escapeHtml(c.name)}
+              </span>`;
+    }),
+    hasUncat ? (() => {
+      const hidden = state.hiddenInAnalysis.includes("__none__");
+      return `<span class="vis-chip ${hidden ? 'hidden-cat' : ''}"
+              style="${hidden ? '' : 'background:#78716c20;color:#78716c;'}"
+              onclick="toggleCatVisibility('__none__')"
+              title="${hidden ? 'Klick, um wieder einzublenden' : 'Klick, um auszublenden'}">
+                <span class="dot" style="background:#78716c"></span>Unkategorisiert
+              </span>`;
+    })() : "",
+  ].join("");
+
+  const anyHidden = state.hiddenInAnalysis.length > 0;
+  panel.innerHTML = `
+    <div class="vis-panel">
+      <h4>Kategorien in dieser Auswertung</h4>
+      <p class="hint">Tippe auf eine Kategorie, um sie auszublenden (wird durchgestrichen). Nochmal tippen blendet sie wieder ein.${anyHidden ? ` <button class="btn-chip" style="margin-left:6px;padding:2px 8px;font-size:11px" onclick="clearHiddenCats()">Alle einblenden</button>` : ""}</p>
+      <div class="vis-chips">${chipHtml}</div>
+    </div>
+  `;
+}
+
+function toggleCatVisibility(id) {
+  const i = state.hiddenInAnalysis.indexOf(id);
+  if (i >= 0) state.hiddenInAnalysis.splice(i, 1);
+  else state.hiddenInAnalysis.push(id);
+  saveState();
+  render();
+}
+
+function clearHiddenCats() {
+  state.hiddenInAnalysis = [];
+  saveState();
+  render();
+}
+
+/* ============================================================ */
+/* Detail-Dialog: alle Buchungen einer Kategorie im Zeitraum     */
+/* ============================================================ */
+function showCategoryTransactions(catId) {
+  const catMap = Object.fromEntries(state.categories.map(c => [c.id, c]));
+  const isNone = catId === "none" || catId === "__none__";
+  const catName = isNone ? "Unkategorisiert" : (catMap[catId]?.name || "?");
+  const catColor = isNone ? "#78716c" : (catMap[catId]?.color || "#999");
+
+  // Gleiche Zeitraum-Logik wie in renderAnalysis.
+  const matchesRange = (t) => {
+    if (state.rangeMode === "custom") {
+      if (state.customFrom && t.date < state.customFrom) return false;
+      if (state.customTo && t.date > state.customTo) return false;
+      return true;
+    }
+    if (state.yearFilter !== "all" && t.date.slice(0, 4) !== state.yearFilter) return false;
+    if (state.monthFilter !== "all" && t.date.slice(0, 7) !== state.monthFilter) return false;
+    return true;
+  };
+
+  const list = state.transactions.filter(t => {
+    if (t.deleted) return false;
+    if (!matchesRange(t)) return false;
+    const tid = t.categoryId || "none";
+    if (isNone) return tid === "none";
+    return tid === catId;
+  }).sort((a, b) => b.date.localeCompare(a.date));
+
+  // Nur Ausgaben oder alle, je nach includeIncome?
+  // Wir zeigen alle relevanten Buchungen (Ausgaben + Einnahmen) und summieren getrennt.
+  const sumExp = list.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+  const sumInc = list.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+
+  // Range-Beschreibung für Header
+  let rangeDesc;
+  if (state.rangeMode === "custom") {
+    rangeDesc = `${state.customFrom || "Anfang"} – ${state.customTo || "heute"}`;
+  } else {
+    const y = state.yearFilter === "all" ? "Alle Jahre" : state.yearFilter;
+    const m = state.monthFilter === "all" ? "" : ` · ${monthLabel(state.monthFilter)}`;
+    rangeDesc = `${y}${m}`;
+  }
+
+  const rows = list.length === 0
+    ? `<div class="empty-state" style="padding:30px 10px"><p>Keine Buchungen in diesem Zeitraum.</p></div>`
+    : list.map(tx => {
+        const amtClass = tx.amount < 0 ? "neg" : "pos";
+        return `<div class="tx-row" style="margin-bottom:6px">
+          <div class="tx-main">
+            <div class="tx-meta"><span class="mono">${tx.date}</span> · ${escapeHtml(tx.bank)}</div>
+            <div class="tx-partner">${escapeHtml(tx.partner || "—")}</div>
+            <div class="tx-purpose">${escapeHtml(tx.purpose)}</div>
+          </div>
+          <div class="tx-right">
+            <div class="tx-amount ${amtClass}">${fmtEUR(tx.amount)}</div>
+          </div>
+        </div>`;
+      }).join("");
+
+  const existing = document.getElementById("categoryTxDialog");
+  if (existing) existing.remove();
+
+  const dlg = document.createElement("div");
+  dlg.id = "categoryTxDialog";
+  dlg.style.cssText = "position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px";
+  dlg.innerHTML = `
+    <div class="dlg-backdrop" onclick="document.getElementById('categoryTxDialog').remove()"></div>
+    <div class="dlg-box" style="max-width:780px;max-height:85vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+        <span style="width:14px;height:14px;border-radius:4px;background:${catColor};margin-top:5px;flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <h3 class="display" style="font-size:20px;margin-bottom:2px">${escapeHtml(catName)}</h3>
+          <div style="font-size:12px;color:var(--text-muted)">${escapeHtml(rangeDesc)} · ${list.length} Buchung${list.length === 1 ? "" : "en"}</div>
+        </div>
+        <button class="btn-ghost" onclick="document.getElementById('categoryTxDialog').remove()" title="Schließen" style="font-size:20px;line-height:1">✕</button>
+      </div>
+      <div class="grid-3" style="margin-bottom:12px">
+        <div class="card-mini"><div class="lbl">Ausgaben</div><div class="v" style="color:var(--danger);font-size:16px">${fmtEUR(sumExp)}</div></div>
+        <div class="card-mini"><div class="lbl">Einnahmen</div><div class="v" style="color:var(--success);font-size:16px">${fmtEUR(sumInc)}</div></div>
+        <div class="card-mini"><div class="lbl">Saldo</div><div class="v" style="font-size:16px;color:${(sumInc+sumExp)>=0?'var(--success)':'var(--danger)'}">${fmtEUR(sumInc + sumExp)}</div></div>
+      </div>
+      <div style="overflow-y:auto;flex:1;min-height:0;padding-right:2px">
+        ${rows}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dlg);
+}
+
+function renderCategories() {
+  const list = document.getElementById("catList");
+  list.innerHTML = state.categories.map(c => `
+    <div class="cat-row" data-cat="${c.id}">
+      <input type="color" value="${c.color}" onchange="updateCat('${c.id}', 'color', this.value)">
+      <div style="flex:1;min-width:120px">
+        <input type="text" value="${escapeHtml(c.name)}" onchange="updateCat('${c.id}', 'name', this.value)" style="width:100%">
+        <div class="cat-keywords">Stichwörter:</div>
+        <input type="text" value="${escapeHtml((c.keywords || []).join(', '))}" onchange="updateCatKeywords('${c.id}', this.value)" style="width:100%;margin-top:3px" placeholder="komma, separiert">
+      </div>
+      <button class="btn-ghost" onclick="deleteCat('${c.id}')" title="Löschen" style="color:var(--danger)">✕</button>
+    </div>
+  `).join("");
+}
+
+function updateCat(id, key, value) {
+  const c = state.categories.find(x => x.id === id);
+  if (!c) return;
+  c[key] = value;
+  saveState();
+}
+
+function updateCatKeywords(id, value) {
+  const c = state.categories.find(x => x.id === id);
+  if (!c) return;
+  c.keywords = value.split(",").map(k => k.trim()).filter(Boolean);
+  recategorizeUnconfirmed();
+  saveState();
+  render();
+}
+
+function deleteCat(id) {
+  if (!confirm("Kategorie wirklich löschen?")) return;
+  state.categories = state.categories.filter(c => c.id !== id);
+  // Regeln, die auf die gelöschte Kategorie zeigen, entfernen
+  Object.keys(state.partnerRules).forEach(k => { if (state.partnerRules[k] === id) delete state.partnerRules[k]; });
+  Object.keys(state.purposeRules).forEach(k => { if (state.purposeRules[k] === id) delete state.purposeRules[k]; });
+  state.hiddenInAnalysis = state.hiddenInAnalysis.filter(x => x !== id);
+  state.customTrendCats = state.customTrendCats.filter(x => x !== id);
+  // Buchungen, die diese Kategorie hatten, neu bewerten (als unbestätigt markieren für Re-Kategorisierung)
+  state.transactions.forEach(t => {
+    if (t.categoryId === id) {
+      t.categoryId = null;
+      t.confirmed = false;
+    }
+  });
+  recategorizeUnconfirmed();
+  saveState();
+  render();
+}
+
+function addCategory() {
+  const name = document.getElementById("newCatName").value.trim();
+  const color = document.getElementById("newCatColor").value;
+  const kwRaw = document.getElementById("newCatKeywords").value;
+  if (!name) return;
+  state.categories.push({
+    id: `cat_${Date.now()}`,
+    name, color,
+    keywords: kwRaw.split(",").map(k => k.trim()).filter(Boolean),
+  });
+  document.getElementById("newCatName").value = "";
+  document.getElementById("newCatKeywords").value = "";
+  recategorizeUnconfirmed();
+  saveState();
+  render();
+}
+
+/* ============================================================ */
+/* File Import                                                   */
+/* ============================================================ */
+
+// Debug-Logging deaktiviert (no-op). Die Funktion bleibt als Stub,
+// damit alle Aufrufe in der Codebasis weiterhin gültig sind.
+// Debug-Ausgaben sind deaktiviert. Die dbg()-Aufrufe bleiben im Code stehen,
+// damit sie im Notfall (durch Einschalten hier) wieder aktiviert werden können.
+function dbg(msg) { /* no-op */ }
+function dbgClear() { /* no-op */ }
+
+// Liest eine Datei robust als Text. Versucht erst UTF-8, fällt bei vielen
+// Ersatzzeichen (�) auf Windows-1252 zurück – deutsche Bank-CSVs sind oft so kodiert.
+async function readFileSmart(file) {
+  dbg(`readFileSmart: lese ${file.name} (${file.size} Bytes, Typ: ${file.type || "?"})`);
+
+  // iOS-Fallback: FileReader statt arrayBuffer() – arrayBuffer() kann auf älterem iOS fehlen.
+  let buf;
+  if (file.arrayBuffer) {
+    buf = await file.arrayBuffer();
+  } else {
+    dbg("  → arrayBuffer() nicht verfügbar, nutze FileReader");
+    buf = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error || new Error("FileReader-Fehler"));
+      r.readAsArrayBuffer(file);
+    });
+  }
+  dbg(`  → ${buf.byteLength} Bytes gelesen`);
+
+  const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+  const replacementCount = (utf8.match(/\uFFFD/g) || []).length;
+  if (replacementCount > 3) {
+    dbg(`  → UTF-8 hat ${replacementCount} Ersatzzeichen, versuche Windows-1252`);
+    try {
+      return new TextDecoder("windows-1252").decode(buf);
+    } catch (e) {
+      dbg(`  → Windows-1252 nicht unterstützt, nutze UTF-8 trotzdem`);
+    }
+  }
+  dbg(`  → Text gelesen: ${utf8.length} Zeichen`);
+  return utf8;
+}
+
+async function handleFiles(files) {
+  dbg(`handleFiles: ${files.length} Datei(en) bekommen`);
+  const msgEl = document.getElementById("importMsg");
+  msgEl.innerHTML = `<div class="msg" style="background:#f5f5f4;color:#57534e;border:1px solid #e7e5e4">Verarbeite ${files.length} Datei(en)…</div>`;
+
+  let newTx = [];
+  let msgs = [];
+
+  for (const file of files) {
+    try {
+      dbg(`verarbeite: ${file.name}`);
+      const text = await readFileSmart(file);
+      const rows = parseCSV(text);
+      dbg(`  → parseCSV: ${rows.length} Zeilen`);
+      const bank = file.name.replace(/\.[^.]+$/, "");
+      const parsed = extractTransactions(rows, bank);
+      dbg(`  → extractTransactions: ${parsed.length} Buchungen`);
+
+      parsed.forEach(tx => {
+        const { categoryId } = categorize(tx);
+        tx.categoryId = categoryId;
+      });
+
+      newTx.push(...parsed);
+      msgs.push(`${file.name}: ${parsed.length} Buchungen`);
+    } catch (e) {
+      dbg(`  ✗ Fehler: ${e.message}`);
+      msgs.push(`${file.name}: Fehler (${e.message})`);
+    }
+  }
+
+  // Dedupe
+  const seen = new Set(state.transactions.map(t => `${t.date}|${t.amount}|${t.purpose}|${t.partner}`));
+  const dedup = newTx.filter(t => !seen.has(`${t.date}|${t.amount}|${t.purpose}|${t.partner}`));
+
+  state.transactions = [...state.transactions, ...dedup].sort((a, b) => b.date.localeCompare(a.date));
+  saveState();
+  render();
+
+  msgEl.innerHTML = `<div class="msg success">✓ ${msgs.join(" · ")} · ${dedup.length} neu (Duplikate übersprungen)</div>`;
+  setTimeout(() => { msgEl.innerHTML = ""; }, 12000);
+}
+
+/* ============================================================ */
+/* CSV-Text einfügen (z.B. aus WhatsApp / Mail / Zwischenablage)  */
+/* ============================================================ */
+function openPasteDialog() {
+  const existing = document.getElementById("pasteDialog");
+  if (existing) existing.remove();
+
+  const dlg = document.createElement("div");
+  dlg.id = "pasteDialog";
+  dlg.style.cssText = "position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px";
+  dlg.innerHTML = `
+    <div class="dlg-backdrop" onclick="document.getElementById('pasteDialog').remove()"></div>
+    <div class="dlg-box" style="max-width:620px">
+      <h3 class="display" style="font-size:19px;margin-bottom:6px">CSV-Text einfügen</h3>
+      <p style="font-size:13px;color:var(--text-soft);margin-bottom:12px">
+        Kopiere den kompletten CSV-Inhalt (z.B. aus WhatsApp, einer Mail, der Dateien-App oder einem Text-Editor) und füge ihn hier ein.
+        Die App erkennt das Format automatisch.
+      </p>
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Name (optional, für die Anzeige)</label>
+      <input type="text" id="pasteName" placeholder="z.B. Mein Girokonto" style="width:100%;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--text-muted)">CSV-Inhalt</label>
+        <button class="btn-chip" type="button" id="pasteFromClipBtn" style="padding:6px 12px;font-size:12px">📋 Aus Zwischenablage einfügen</button>
+      </div>
+      <textarea id="pasteText" placeholder="Hier einfügen (oder lange tippen → Einsetzen)…" style="width:100%;height:220px;font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);resize:vertical"></textarea>
+      <div id="pasteClipMsg" style="font-size:12px;margin-top:6px;min-height:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
+        <button class="btn-chip" onclick="document.getElementById('pasteDialog').remove()">Abbrechen</button>
+        <button class="btn-primary" onclick="submitPastedCSV()">Importieren</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dlg);
+
+  // "Aus Zwischenablage einfügen"-Button verdrahten
+  const clipBtn = document.getElementById("pasteFromClipBtn");
+  const clipMsg = document.getElementById("pasteClipMsg");
+  if (clipBtn) {
+    clipBtn.addEventListener("click", async () => {
+      clipMsg.textContent = "";
+      clipMsg.style.color = "";
+      dbg("Zwischenablage-Button gedrückt");
+      try {
+        if (!navigator.clipboard) {
+          throw new Error("Dein Browser kennt die Zwischenablage-API nicht. Bitte unten ins Textfeld lange tippen → „Einsetzen“.");
+        }
+        if (!navigator.clipboard.readText) {
+          throw new Error("Dein Browser erlaubt das direkte Lesen von Text nicht. Bitte unten ins Textfeld lange tippen → „Einsetzen“.");
+        }
+        dbg("  → rufe clipboard.readText() auf…");
+        const text = await navigator.clipboard.readText();
+        dbg(`  → Zwischenablage: ${text ? text.length + " Zeichen" : "leer/null"}`);
+        if (!text || !text.trim()) {
+          throw new Error("Die Zwischenablage enthält keinen Text. Hast du eine Datei kopiert statt Text? Öffne die CSV, markiere den Text und kopiere ihn, oder tippe unten lange ins Textfeld → „Einsetzen“.");
+        }
+        document.getElementById("pasteText").value = text;
+        clipMsg.style.color = "var(--success)";
+        clipMsg.textContent = `✓ ${text.length.toLocaleString("de-DE")} Zeichen eingefügt – jetzt auf „Importieren“ tippen.`;
+      } catch (err) {
+        dbg(`  ✗ Zwischenablage-Fehler: ${err.name || ""} ${err.message || err}`);
+        clipMsg.style.color = "var(--danger)";
+        clipMsg.textContent = "⚠ " + (err.message || "Zugriff auf die Zwischenablage fehlgeschlagen.");
+      }
+    });
+  }
+
+  // Leichten Fokus auf die Textarea setzen, damit iOS direkt ins Einfügen-Menü wechseln kann
+  setTimeout(() => {
+    const ta = document.getElementById("pasteText");
+    if (ta) ta.focus();
+  }, 50);
+}
+
+function submitPastedCSV() {
+  const text = (document.getElementById("pasteText").value || "").trim();
+  const nameRaw = (document.getElementById("pasteName").value || "").trim();
+  const bank = nameRaw || "Eingefügt";
+  if (!text) {
+    alert("Bitte zuerst den CSV-Inhalt einfügen.");
+    return;
+  }
+  const dlg = document.getElementById("pasteDialog");
+  if (dlg) dlg.remove();
+  handlePastedText(text, bank);
+}
+
+function handlePastedText(text, bankName) {
+  const msgEl = document.getElementById("importMsg");
+  msgEl.innerHTML = `<div class="msg" style="background:#f5f5f4;color:#57534e;border:1px solid #e7e5e4">Verarbeite eingefügten Text…</div>`;
+
+  try {
+    const rows = parseCSV(text);
+    const parsed = extractTransactions(rows, bankName);
+    parsed.forEach(tx => {
+      const { categoryId } = categorize(tx);
+      tx.categoryId = categoryId;
+    });
+
+    if (parsed.length === 0) {
+      msgEl.innerHTML = `<div class="msg warn">⚠ Im eingefügten Text konnten keine Buchungen erkannt werden. Stelle sicher, dass der Kopf-Text (z.B. „Buchungstag;Betrag;Verwendungszweck“) enthalten ist.</div>`;
+      return;
+    }
+
+    const seen = new Set(state.transactions.map(t => `${t.date}|${t.amount}|${t.purpose}|${t.partner}`));
+    const dedup = parsed.filter(t => !seen.has(`${t.date}|${t.amount}|${t.purpose}|${t.partner}`));
+
+    state.transactions = [...state.transactions, ...dedup].sort((a, b) => b.date.localeCompare(a.date));
+    saveState();
+    render();
+
+    msgEl.innerHTML = `<div class="msg success">✓ ${bankName}: ${parsed.length} Buchungen erkannt · ${dedup.length} neu (Duplikate übersprungen)</div>`;
+    setTimeout(() => { msgEl.innerHTML = ""; }, 12000);
+  } catch (e) {
+    msgEl.innerHTML = `<div class="msg error">Fehler beim Einlesen: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/* ============================================================ */
+/* Manuelle Buchung hinzufügen                                   */
+/* ============================================================ */
+function openManualTxDialog() {
+  const existing = document.getElementById("manualTxDialog");
+  if (existing) existing.remove();
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Kategorien-Optionen bauen (sortiert nach Name, "Sonstiges" ans Ende)
+  const sortedCats = [...state.categories].sort((a, b) => {
+    if (a.id === "cat_sonstiges") return 1;
+    if (b.id === "cat_sonstiges") return -1;
+    return a.name.localeCompare(b.name, "de");
+  });
+  const catOptions = sortedCats
+    .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
+    .join("");
+
+  const dlg = document.createElement("div");
+  dlg.id = "manualTxDialog";
+  dlg.style.cssText = "position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px";
+  dlg.innerHTML = `
+    <div class="dlg-backdrop" onclick="document.getElementById('manualTxDialog').remove()"></div>
+    <div class="dlg-box" style="max-width:420px">
+      <h3 class="display" style="font-size:19px;margin-bottom:12px">Neue Buchung</h3>
+
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Datum</label>
+      <input type="date" id="manualTxDate" value="${today}" style="width:100%;margin-bottom:12px">
+
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Betrag (negativ = Ausgabe, positiv = Einnahme)</label>
+      <input type="text" inputmode="decimal" id="manualTxAmount" placeholder="z.B. -24,50 oder 1500" style="width:100%;margin-bottom:12px">
+
+      <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Kategorie</label>
+      <select id="manualTxCategory" style="width:100%;margin-bottom:12px">
+        <option value="">— keine —</option>
+        ${catOptions}
+      </select>
+
+      <div id="manualTxMsg" style="font-size:12px;color:var(--danger);min-height:16px;margin-bottom:8px"></div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn-chip" type="button" onclick="document.getElementById('manualTxDialog').remove()">Abbrechen</button>
+        <button class="btn-primary" type="button" id="manualTxSaveBtn">Speichern</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dlg);
+
+  // Save-Handler
+  document.getElementById("manualTxSaveBtn").addEventListener("click", () => {
+    const msgEl = document.getElementById("manualTxMsg");
+    const date = document.getElementById("manualTxDate").value;
+    const amountRaw = document.getElementById("manualTxAmount").value.trim();
+    const categoryId = document.getElementById("manualTxCategory").value || null;
+
+    if (!date) { msgEl.textContent = "Bitte ein Datum wählen."; return; }
+    if (!amountRaw) { msgEl.textContent = "Bitte einen Betrag eingeben."; return; }
+
+    // Betrag parsen: Komma als Dezimaltrenner akzeptieren, Punkte als Tausendertrenner entfernen
+    // Beispiele: "-24,50" "1.500,00" "1500" "-1,500.50"
+    let s = amountRaw.replace(/\s/g, "");
+    const hasComma = s.includes(",");
+    const hasDot = s.includes(".");
+    if (hasComma && hasDot) {
+      // deutsches Format: Punkt = Tausender, Komma = Dezimal
+      if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+        s = s.replace(/\./g, "").replace(",", ".");
+      } else {
+        // englisches Format: Komma = Tausender, Punkt = Dezimal
+        s = s.replace(/,/g, "");
+      }
+    } else if (hasComma) {
+      s = s.replace(",", ".");
+    }
+    const num = parseFloat(s);
+    if (isNaN(num)) { msgEl.textContent = "Der Betrag ist ungültig. Beispiel: -24,50"; return; }
+
+    const tx = {
+      id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      date,
+      amount: num,
+      purpose: "",
+      partner: "Manuell erfasst",
+      bank: "Manuell",
+      categoryId,
+      confirmed: true, // manuell gesetzte Kategorie gilt als bestätigt
+    };
+
+    state.transactions = [tx, ...state.transactions].sort((a, b) => b.date.localeCompare(a.date));
+    saveState();
+    document.getElementById("manualTxDialog").remove();
+
+    // Auf den Buchungen-Tab wechseln, falls noch nicht dort
+    state.activeTab = "transactions";
+    render();
+  });
+
+  // Fokus auf Betrag-Feld setzen (Datum ist vorausgefüllt)
+  setTimeout(() => {
+    const amt = document.getElementById("manualTxAmount");
+    if (amt) amt.focus();
+  }, 50);
+}
+
+/* ============================================================ */
+/* Helpers                                                       */
+/* ============================================================ */
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// JSON-Wert sicher als HTML-Attribut-Wert encodieren (für inline onclick).
+// Erzeugt z.B.  "foo &amp; bar"  →  aufrufbar als JS-Literal im onclick.
+function jsonAttr(v) {
+  return JSON.stringify(v)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function exportBackup() {
+  const data = {
+    transactions: state.transactions,
+    categories: state.categories,
+    partnerRules: state.partnerRules,
+    purposeRules: state.purposeRules,
+    hiddenInAnalysis: state.hiddenInAnalysis,
+    customTrendCats: state.customTrendCats,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `kassensturz-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importBackup(file) {
+  try {
+    const text = await file.text();
+    const d = JSON.parse(text);
+    if (!confirm("Aktuelle Daten werden überschrieben. Fortfahren?")) return;
+    if (d.transactions) state.transactions = d.transactions;
+    if (d.categories && d.categories.length) state.categories = d.categories;
+    if (d.partnerRules) state.partnerRules = d.partnerRules;
+    if (d.purposeRules) state.purposeRules = d.purposeRules;
+    if (Array.isArray(d.hiddenInAnalysis)) state.hiddenInAnalysis = d.hiddenInAnalysis;
+    if (Array.isArray(d.customTrendCats)) state.customTrendCats = d.customTrendCats;
+    if (d.rules && !d.partnerRules) state.partnerRules = d.rules; // Legacy
+    saveState();
+    render();
+    alert("Backup erfolgreich eingelesen.");
+  } catch (e) {
+    alert("Fehler beim Einlesen: " + e.message);
+  }
+}
+
+/* ============================================================ */
+/* Events                                                        */
+/* ============================================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  loadState();
+  render();
+  dbg(`App gestartet. UA: ${navigator.userAgent.substring(0, 90)}`);
+
+  // Tabs
+  document.getElementById("tabsInner").addEventListener("click", e => {
+    const btn = e.target.closest(".tab-btn");
+    if (!btn) return;
+    state.activeTab = btn.dataset.tab;
+    render();
+  });
+
+  // Dropzone
+  const dz = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  const pasteBtn = document.getElementById("pasteCsvBtn");
+  dbg(`DOM-Elemente: dropzone=${!!dz}, fileInput=${!!fileInput}, pasteBtn=${!!pasteBtn}`);
+
+  // "CSV einfügen" öffnet den Paste-Dialog.
+  pasteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openPasteDialog();
+  });
+
+  // change UND input horchen (iOS feuert manchmal nur eins von beiden).
+  // Zusätzlich ein Flag, damit wir nicht doppelt importieren, wenn beide feuern.
+  let lastHandled = 0;
+  const onFilesChanged = (e) => {
+    const now = Date.now();
+    dbg(`fileInput-Event: ${e.type}, files.length=${e.target.files ? e.target.files.length : "?"}`);
+    if (now - lastHandled < 500) {
+      dbg("  → Doppel-Event ignoriert");
+      return;
+    }
+    if (e.target.files && e.target.files.length) {
+      lastHandled = now;
+      const fileList = [...e.target.files];
+      dbg(`  Dateien: ${fileList.map(f => `${f.name} (${f.size}B, "${f.type||'?'}")`).join(", ")}`);
+      handleFiles(fileList);
+      // Value NICHT sofort leeren – auf iOS kann das den File-Zugriff unterbrechen,
+      // bevor readFileSmart fertig ist. Stattdessen erst deutlich später zurücksetzen.
+      setTimeout(() => { try { fileInput.value = ""; } catch (_) {} }, 2000);
+    } else {
+      dbg("  → Keine Dateien im Event");
+    }
+  };
+  fileInput.addEventListener("change", onFilesChanged);
+  fileInput.addEventListener("input", onFilesChanged);
+
+  // iOS-Safari-Fallback: manchmal feuert weder change noch input, obwohl der User
+  // eine Datei ausgewählt hat. Nach jedem Tap auf den Input pollen wir 3× und
+  // prüfen manuell, ob files gefüllt ist.
+  fileInput.addEventListener("click", () => {
+    dbg("fileInput: tap registriert, starte Polling-Fallback");
+    [500, 1500, 3000, 5000].forEach(delay => {
+      setTimeout(() => {
+        if (Date.now() - lastHandled < 500) return; // schon durch change/input verarbeitet
+        if (fileInput.files && fileInput.files.length) {
+          dbg(`Polling (${delay}ms): ${fileInput.files.length} Datei(en) gefunden – kein change-Event gekommen!`);
+          lastHandled = Date.now();
+          const fileList = [...fileInput.files];
+          dbg(`  Dateien: ${fileList.map(f => `${f.name} (${f.size}B, "${f.type||'?'}")`).join(", ")}`);
+          handleFiles(fileList);
+          setTimeout(() => { try { fileInput.value = ""; } catch (_) {} }, 2000);
+        } else {
+          dbg(`Polling (${delay}ms): keine Dateien`);
+        }
+      }, delay);
+    });
+  });
+
+  ["dragover", "dragenter"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("drag"); }));
+  dz.addEventListener("drop", e => { if (e.dataTransfer.files.length) handleFiles([...e.dataTransfer.files]); });
+
+  // iOS-Fix: KEIN programmatisches fileInput.click() mehr von der Dropzone aus.
+  // Der Input liegt jetzt direkt unter dem Label und fängt Taps selbst ab. Ein
+  // zusätzlicher programmatischer Click löst auf iOS oft einen zweiten Picker
+  // aus oder unterdrückt den ersten ganz.
+
+  // Clear all
+  document.getElementById("clearAllBtn").addEventListener("click", () => {
+    if (confirm(`Alle ${state.transactions.length} Buchungen wirklich löschen?`)) {
+      state.transactions = [];
+      saveState();
+      render();
+    }
+  });
+
+  // Search & filter
+  document.getElementById("searchInput").addEventListener("input", e => { state.search = e.target.value; render(); });
+  document.querySelectorAll("[data-filter]").forEach(b => b.addEventListener("click", () => { state.filter = b.dataset.filter; render(); }));
+
+  // Manuelle Buchung
+  document.getElementById("addTxBtn").addEventListener("click", openManualTxDialog);
+
+  // Analysis controls
+  // Hinweis: yearFilter / monthFilter / customFrom / customTo werden bei jedem Render
+  // dynamisch aufgebaut und direkt in renderAnalysis() mit Events versehen.
+  document.getElementById("includeIncome").addEventListener("change", e => { state.includeIncome = e.target.checked; render(); });
+  document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => { state.analysisView = b.dataset.view; render(); }));
+  document.querySelectorAll("[data-range]").forEach(b => b.addEventListener("click", () => {
+    state.rangeMode = b.dataset.range;
+    // Beim Wechsel in den freien Zeitraum evtl. Default-Daten setzen
+    if (state.rangeMode === "custom" && (!state.customFrom || !state.customTo)) {
+      const dates = state.transactions.filter(t => !t.deleted).map(t => t.date).sort();
+      if (dates.length) {
+        if (!state.customFrom) state.customFrom = dates[0];
+        if (!state.customTo) state.customTo = dates[dates.length - 1];
+      }
+    }
+    render();
+  }));
+
+  // Categories
+  document.getElementById("addCatBtn").addEventListener("click", addCategory);
+
+  // Backup
+  document.getElementById("exportBtn").addEventListener("click", exportBackup);
+  // "Backup einlesen" ist jetzt ein <label for="backupFile"> – kein JS-Klick nötig (iOS-kompatibel).
+  document.getElementById("backupFile").addEventListener("change", e => { if (e.target.files[0]) importBackup(e.target.files[0]); e.target.value = ""; });
+});
+</script>
+
+</body>
+</html>
